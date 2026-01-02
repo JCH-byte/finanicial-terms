@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>금융용어 마스터</title>
+    
+    <!-- 1. Tailwind CSS (스타일링) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. 폰트 설정 (Pretendard) -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        /* 카드 뒤집기 효과 */
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        /* 스크롤바 숨기기 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+
+    <!-- 3. 리액트 및 라이브러리 로드 (ES Module 방식) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "react": "https://esm.sh/react@18.2.0",
+                "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+                "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-900 overflow-hidden">
+    <div id="root"></div>
+
+    <!-- 메인 스크립트 -->
+    <script type="module">
+        import React, { useState, useEffect, useMemo } from 'react';
+        import ReactDOM from 'react-dom/client';
+        import { Search, BookOpen, Star, Home, ChevronRight, RotateCw, Lightbulb, X, Brain, Trophy, ArrowUp, BarChart3 } from 'lucide-react';
+
+        // ==========================================
+        // DATA LAYER
+        // ==========================================
+        // [중요] 여기에 완성된 700개 데이터를 덮어쓰세요!
+        const RAW_DATA = [
+          {
+            "id": 1,
+            "term": "가계부실위험지수(HDRI)",
+            "englishTerm": "HDRI",
+            "definition": "가구의 소득과 자산을 종합하여 가계부채의 부실 위험을 평가하는 지표",
+            "description": "가계의 채무상환능력을 소득 측면(DSR)과 자산 측면(DTA)에서 종합적으로 평가하여 산출합니다. 이 지수가 100을 넘으면 '위험가구'로 분류될 가능성이 높습니다.",
+            "category": "리스크관리",
+            "difficulty": 3
+          },
+          {
+            "id": 2,
+            "term": "가계수지",
+            "englishTerm": "Household Income and Expenditure",
+            "definition": "가정의 수입과 지출을 비교해서 남은 돈이 있는지 부족한지 보여주는 지표",
+            "description": "국가 경제에서 가계 부문의 살림살이가 나아졌는지 나빠졌는지를 보여주는 중요한 통계입니다. 흑자면 저축 여력이 생긴 것이고, 적자면 빚이 늘어날 가능성이 큽니다.",
+            "category": "경기",
+            "difficulty": 1
+          },
+          {
+            "id": 3,
+            "term": "가계순저축률",
+            "englishTerm": "Household Net Saving Rate",
+            "definition": "가계가 쓸 수 있는 돈(처분가능소득) 중에서 쓰고 남은 저축액의 비율",
+            "description": "가계의 재무 건전성을 나타내는 핵심 지표입니다. 저축률이 높을수록 가계가 미래의 위험에 대비할 여력이 충분하다는 뜻입니다.",
+            "category": "경기",
+            "difficulty": 2
+          },
+          {
+            "id": 4,
+            "term": "가계신용통계",
+            "englishTerm": "Household Credit Statistics",
+            "definition": "일반 가정이 금융기관에서 빌린 돈과 외상으로 산 물건 값을 합친 통계",
+            "description": "흔히 말하는 '가계 빚'의 총량을 의미합니다. 은행 대출뿐만 아니라 카드 사용 금액(판매신용)까지 포함하여 가계 부채 규모를 정확히 파악합니다.",
+            "category": "금융시장",
+            "difficulty": 2
+          },
+          {
+            "id": 5,
+            "term": "가계처분가능소득",
+            "englishTerm": "PDI",
+            "definition": "가계가 벌어들인 소득 중 세금 등을 빼고 실제 마음대로 쓸 수 있는 돈",
+            "description": "개인이 소비나 저축으로 자유롭게 처분할 수 있는 소득을 말합니다. 이 소득이 늘어나야 내수 경기가 활성화될 수 있습니다.",
+            "category": "경기",
+            "difficulty": 1
+          },
+          {
+            "id": 6,
+            "term": "가교은행",
+            "englishTerm": "Bridge Bank",
+            "definition": "파산한 은행의 자산을 임시로 맡아 관리하기 위해 설립된 은행",
+            "description": "부실 은행을 정리하는 동안 예금자 보호와 금융 시스템 안정을 위해 한시적으로 운영되는 '임시 은행'입니다.",
+            "category": "정책",
+            "difficulty": 2
+          },
+          {
+            "id": 7,
+            "term": "가동률",
+            "englishTerm": "Operation Ratio",
+            "definition": "생산설비가 얼마나 부지런히 돌아가고 있는지를 보여주는 비율",
+            "description": "생산능력 대비 실제 생산실적의 비율입니다. 가동률이 높으면 경기가 좋다는 신호이고, 낮으면 공장이 놀고 있다는 뜻으로 경기가 나쁘다는 신호입니다.",
+            "category": "경기",
+            "difficulty": 1
+          },
+          {
+            "id": 8,
+            "term": "가변예치의무제도",
+            "englishTerm": "Variable Deposit Requirement",
+            "definition": "외국에서 들어오는 돈의 일정 비율을 강제로 예치하게 하는 제도",
+            "description": "단기간에 투기성 외국 자본이 급격히 유입되어 환율이 요동치는 것을 막기 위한 외환 시장 안정화 정책 중 하나입니다.",
+            "category": "정책",
+            "difficulty": 3
+          },
+          {
+            "id": 9,
+            "term": "가산금리",
+            "englishTerm": "Spread",
+            "definition": "대출 금리를 정할 때 기준금리에 덧붙이는 위험 프리미엄 금리",
+            "description": "대출자의 신용도가 낮거나 대출 기간이 길어질수록 은행은 위험 부담을 줄이기 위해 더 높은 가산금리를 적용합니다.",
+            "category": "금리",
+            "difficulty": 1
+          },
+          {
+            "id": 10,
+            "term": "가상통화",
+            "englishTerm": "Virtual Currency",
+            "definition": "실물 없이 네트워크상에서 전자적 형태로 거래되는 화폐",
+            "description": "비트코인처럼 중앙은행이 아닌 민간에서 발행하며, 블록체인 기술을 기반으로 거래 내역이 기록되는 것이 특징입니다.",
+            "category": "경제상식",
+            "difficulty": 1
+          },
+          {
+            "id": 11,
+            "term": "가상통화공개(ICO)",
+            "englishTerm": "ICO",
+            "definition": "새로운 암호화폐를 만들어 투자자에게 팔아 자금을 모으는 방식",
+            "description": "주식시장의 상장(IPO)과 비슷하지만, 주식 대신 코인(토큰)을 발행하여 투자금을 조달한다는 점이 다릅니다.",
+            "category": "금융시장",
+            "difficulty": 2
+          },
+          {
+            "id": 12,
+            "term": "간접금융/직접금융",
+            "englishTerm": "Indirect/Direct Financing",
+            "definition": "은행을 통해 돈을 빌리면 간접금융, 주식/채권으로 직접 조달하면 직접금융",
+            "description": "은행이 중개자 역할을 하면 간접금융이고, 기업이 시장에서 투자자에게 직접 자금을 구하면 직접금융입니다.",
+            "category": "금융시장",
+            "difficulty": 1
+          },
+          {
+            "id": 13,
+            "term": "간접세/직접세",
+            "englishTerm": "Indirect/Direct Tax",
+            "definition": "세금을 내는 사람과 실제 부담하는 사람이 다르면 간접세, 같으면 직접세",
+            "description": "부가세처럼 물건값에 포함돼 나도 모르게 내는 게 간접세고, 소득세처럼 내 이름으로 고지서가 나오는 게 직접세입니다.",
+            "category": "경제상식",
+            "difficulty": 1
+          },
+          {
+            "id": 14,
+            "term": "감독자협의회",
+            "englishTerm": "Supervisory College",
+            "definition": "다국적 금융기관을 효과적으로 감독하기 위해 관련 국가 감독당국이 모인 협의체",
+            "description": "여러 나라에 걸쳐 영업하는 거대 은행을 한 나라가 혼자 감독하기 어렵기 때문에, 관련국들이 정보를 공유하고 협력하는 모임입니다.",
+            "category": "정책",
+            "difficulty": 3
+          },
+          {
+            "id": 15,
+            "term": "감응도계수",
+            "englishTerm": "Sensitivity Coefficient",
+            "definition": "시장 변화에 따라 특정 변수가 얼마나 민감하게 반응하는지를 나타내는 수치",
+            "description": "주식 시장에서 베타(Beta) 계수처럼, 시장 전체가 1% 변할 때 개별 종목이 몇 % 변하는지를 측정하여 위험을 관리할 때 씁니다.",
+            "category": "리스크관리",
+            "difficulty": 3
+          },
+          {
+            "id": 16,
+            "term": "갑기금(Capital A)",
+            "englishTerm": "Capital A",
+            "definition": "외국은행 국내지점의 설치 및 영업을 위해 본점에서 들여온 자본금",
+            "description": "외국계 은행 서울지점이 영업을 시작할 때 본사에서 한국으로 가져온 초기 자본금을 말하며, 법정 자본금으로 인정받습니다.",
+            "category": "금융시장",
+            "difficulty": 3
+          },
+          {
+            "id": 17,
+            "term": "거시건전성 정책",
+            "englishTerm": "Macroprudential Policy",
+            "definition": "금융 시스템 전체의 안정을 위해 경제 전반의 위험 요인을 관리하는 정책",
+            "description": "개별 은행의 부실을 막는 것(미시)을 넘어, LTV·DTI 규제처럼 금융 위기가 시스템 전체로 번지는 것을 막는 예방적 정책입니다.",
+            "category": "정책",
+            "difficulty": 2
+          },
+          {
+            "id": 18,
+            "term": "거액결제시스템",
+            "englishTerm": "Large Value Payment System",
+            "definition": "금융기관 간의 거액 자금 이체를 실시간으로 처리하는 시스템",
+            "description": "우리나라의 '한은금융망'이 대표적이며, 은행들끼리 주고받는 큰 돈을 건별로 즉시 결제하여 금융 시장의 동맥 역할을 합니다.",
+            "category": "금융시장",
+            "difficulty": 3
+          },
+          {
+            "id": 19,
+            "term": "거액익스포저 규제",
+            "englishTerm": "Large Exposure Limit",
+            "definition": "은행이 특정 기업이나 그룹에 너무 많은 돈을 빌려주지 못하게 막는 규제",
+            "description": "한 곳에 몰빵해서 대출해줬다가 그 기업이 망하면 은행도 같이 망할 수 있으므로, 대출 한도를 자기자본의 일정 비율로 제한하는 것입니다.",
+            "category": "리스크관리",
+            "difficulty": 2
+          },
+          {
+            "id": 20,
+            "term": "결제",
+            "englishTerm": "Settlement",
+            "definition": "돈을 주고받아 거래 관계를 끝내는 것",
+            "description": "증권이나 물품 거래에서 계약을 체결한 후, 실제로 돈을 지급하고 소유권을 이전받아 거래를 최종적으로 완료하는 과정입니다.",
+            "category": "경제상식",
+            "difficulty": 1
+          },
+          {
+            "id": 21,
+            "term": "결제리스크",
+            "englishTerm": "Settlement Risk",
+            "definition": "거래는 했는데 약속한 날짜에 돈이나 증권을 받지 못할 위험",
+            "description": "시차 문제나 상대방의 파산 등으로 인해 결제가 예정대로 이뤄지지 않아 발생할 수 있는 손실 가능성을 말합니다.",
+            "category": "리스크관리",
+            "difficulty": 2
+          },
+          {
+            "id": 22,
+            "term": "결제부족자금 공동분담제",
+            "englishTerm": "Loss Sharing System",
+            "definition": "참가 은행 중 하나가 결제 자금이 부족할 때 나머지 은행들이 돈을 모아 대신 메워주는 제도",
+            "description": "한 은행의 부도로 전체 결제 시스템이 마비되는 것을 막기 위해, 다른 은행들이 십시일반으로 자금을 지원하여 연쇄 부도를 방지합니다.",
+            "category": "정책",
+            "difficulty": 3
+          },
+          {
+            "id": 23,
+            "term": "결제완결성",
+            "englishTerm": "Settlement Finality",
+            "definition": "이루어진 결제는 어떤 경우에도 취소되거나 번복될 수 없다는 원칙",
+            "description": "한번 돈이 넘어갔으면 해당 은행이 나중에 파산하더라도 그 결제는 유효한 것으로 확정하여 금융 시장의 혼란을 막습니다.",
+            "category": "금융시장",
+            "difficulty": 3
+          },
+          {
+            "id": 24,
+            "term": "겸업주의/전업주의",
+            "englishTerm": "Universal/Specialized Banking",
+            "definition": "은행이 증권·보험업도 다 할 수 있으면 겸업주의, 칸막이 쳐서 따로 하면 전업주의",
+            "description": "한국은 자본시장법 이후 은행, 증권, 보험의 장벽을 허무는 겸업주의 흐름을 타고 있습니다. '금융지주회사'가 대표적인 예입니다.",
+            "category": "정책",
+            "difficulty": 2
+          },
+          {
+            "id": 25,
+            "term": "경기",
+            "englishTerm": "Business Conditions",
+            "definition": "국가 경제 전체의 활동 수준이 좋고 나쁨을 나타내는 상태",
+            "description": "생산, 소비, 투자 등 경제 활동이 활발하면 '호황', 위축되면 '불황'이라고 합니다. 경기는 파도처럼 상승과 하강을 반복합니다.",
+            "category": "경기",
+            "difficulty": 1
+          },
+          {
+            "id": 26,
+            "term": "경기동향지수(경기확산지수)",
+            "englishTerm": "Diffusion Index",
+            "definition": "경기가 좋아지는 방향인지 나빠지는 방향인지를 판단하는 지수",
+            "description": "경제 지표 중 저번 달보다 좋아진 지표가 몇 개인지 세어 봅니다. 50이 넘으면 경기가 확장 국면, 안 되면 수축 국면으로 봅니다.",
+            "category": "경기",
+            "difficulty": 2
+          },
+          {
+            "id": 27,
+            "term": "경기순응성",
+            "englishTerm": "Procyclicality",
+            "definition": "경기가 좋을 때 돈을 더 풀고, 나쁠 때 돈줄을 죄어 경기 변동을 부채질하는 성질",
+            "description": "은행이 호황일 때 대출을 늘리고 불황일 때 회수하여, 경기의 오르내림 폭을 더 크게 만드는 현상을 말합니다. 금융 당국은 이를 완화하려 노력합니다.",
+            "category": "경기",
+            "difficulty": 2
+          },
+          {
+            "id": 28,
+            "term": "경기조절정책/경제안정화정책",
+            "englishTerm": "Stabilization Policy",
+            "definition": "경기가 너무 과열되거나 침체되지 않도록 정부가 개입하여 조절하는 정책",
+            "description": "재정정책(정부 지출 조절)과 통화정책(금리 조절)을 사용하여 경제를 적정 수준으로 유지하려는 노력입니다.",
+            "category": "정책",
+            "difficulty": 1
+  },
+  {
+    "id": 29,
+    "term": "경기종합지수",
+    "englishTerm": "Composite Index (CI)",
+    "definition": "여러 경제 지표를 종합하여 현재 경기의 종합적인 상태를 나타내는 지수",
+    "description": "선행(미래 예측), 동행(현재 파악), 후행(과거 확인) 지수로 나뉘며, 숫자의 크기보다는 전월 대비 증감 방향이 중요합니다.",
+    "category": "경기",
+    "difficulty": 1
+  },
+  {
+    "id": 30,
+    "term": "경상수지",
+    "englishTerm": "Current Account Balance",
+    "definition": "국가 간의 상품 및 서비스 거래를 통해 벌어들인 돈과 나간 돈의 차이",
+    "description": "국가 경제의 성적표와 같습니다. 수출이 많아 흑자가 나면 나라 곳간이 차고, 적자가 나면 빚이 늘어납니다.",
+    "category": "경기",
+    "difficulty": 1
+  },
+  {
+    "id": 31,
+    "term": "경영실태평가",
+    "englishTerm": "Management Evaluation",
+    "definition": "금융감독 당국이 은행이 장사를 잘하고 있는지 건전성을 뜯어보는 종합 건강검진",
+    "description": "자본적정성(C), 자산건전성(A), 경영관리(M), 수익성(E), 유동성(L) 등을 앞글자를 따서 CAMEL 평가라고도 합니다.",
+    "category": "정책",
+    "difficulty": 3
+  },
+  {
+    "id": 32,
+    "term": "경영지도비율",
+    "englishTerm": "Management Guideline Ratios",
+    "definition": "금융기관이 지켜야 할 최소한의 경영 건전성 기준",
+    "description": "BIS비율이나 예대율처럼 '이 선은 넘지 마라'고 금융당국이 정해준 안전 가이드라인입니다.",
+    "category": "리스크관리",
+    "difficulty": 2
+  },
+  {
+    "id": 33,
+    "term": "경영평가지표",
+    "englishTerm": "Performance Indicators",
+    "definition": "기업의 경영 성과나 효율성을 측정하기 위한 다양한 재무 지표들",
+    "description": "부채비율, 이자보상배율, 매출액영업이익률 등 기업이 얼마나 건강한지를 숫자로 나타낸 것입니다.",
+    "category": "기업경영",
+    "difficulty": 2
+  },
+  {
+    "id": 34,
+    "term": "경제성장률",
+    "englishTerm": "Economic Growth Rate",
+    "definition": "실질 GDP가 전년 대비 얼마나 증가했는지를 나타내는 비율",
+    "description": "국가 경제의 규모가 얼마나 커졌는지를 보여주는 대표적인 지표입니다. 보통 1년간 생산된 부가가치의 증가분으로 계산합니다.",
+    "category": "경기",
+    "difficulty": 1
+  },
+  {
+    "id": 35,
+    "term": "경제심리지수",
+    "englishTerm": "Economic Sentiment Index (ESI)",
+    "definition": "기업과 소비자가 경제를 어떻게 느끼는지 설문 조사하여 합친 지표",
+    "description": "숫자가 100을 넘으면 경제를 좋게 보는 사람이 더 많고, 100보다 낮으면 비관적으로 보는 사람이 더 많다는 뜻입니다.",
+    "category": "경기",
+    "difficulty": 2
+  },
+  {
+    "id": 36,
+    "term": "경제협력개발기구(OECD)",
+    "englishTerm": "OECD",
+    "definition": "시장경제와 민주주의를 표방하는 선진국들의 정책 협력 기구",
+    "description": "경제 성장과 무역 확대를 위해 회원국끼리 정책을 의논합니다. 흔히 '선진국 클럽'이라고 불립니다.",
+    "category": "경제상식",
+    "difficulty": 1
+  },
+  {
+    "id": 37,
+    "term": "경제활동인구",
+    "englishTerm": "Economically Active Pop.",
+    "definition": "만 15세 이상 인구 중 일할 의사와 능력이 있는 사람 (취업자 + 실업자)",
+    "description": "학생이나 전업주부처럼 일할 의사가 없는 사람은 '비경제활동인구'로 빠집니다. 실업률 계산의 분모가 됩니다.",
+    "category": "경기",
+    "difficulty": 1
+  },
+  {
+    "id": 38,
+    "term": "경제후생지표",
+    "englishTerm": "Measure of Econ. Welfare",
+    "definition": "GDP로는 알 수 없는 삶의 질이나 복지 수준을 측정하기 위한 지표",
+    "description": "GDP는 환경오염이나 여가 시간 등을 반영하지 못하므로, 이를 보완하여 국민이 실제로 얼마나 잘 사는지를 측정하려는 시도입니다.",
+    "category": "경제상식",
+    "difficulty": 2
+  },
+  {
+    "id": 39,
+    "term": "경직적 물가지수",
+    "englishTerm": "Sticky Price Index",
+    "definition": "가격이 한 번 정해지면 잘 변하지 않는 품목들만 모아서 만든 물가지수",
+    "description": "공공요금이나 이미용료처럼 가격이 자주 바뀌지 않는 항목들을 통해 기조적인 물가 상승 흐름을 파악할 때 씁니다.",
+    "category": "경기",
+    "difficulty": 3
+  },
+  {
+    "id": 40,
+    "term": "계절변동조정시계열",
+    "englishTerm": "Seasonally Adjusted Series",
+    "definition": "명절이나 휴가철 같은 계절적 요인을 제거하여 진짜 추세를 보여주는 통계",
+    "description": "추석에 마트 매출이 느는 건 당연한 것이므로, 이런 계절 효과를 빼야 전월 대비 경기가 진짜 좋아졌는지 알 수 있습니다.",
+    "category": "경기",
+    "difficulty": 2
+  },
+  {
+    "id": 41,
+    "term": "계좌대체",
+    "englishTerm": "Account Transfer",
+    "definition": "현금을 찾지 않고 내 계좌에서 상대방 계좌로 돈만 옮기는 것",
+    "description": "우리가 흔히 쓰는 '계좌이체'를 말합니다. 실물 화폐의 이동 없이 장부상으로만 자금이 이동합니다.",
+    "category": "금융시장",
+    "difficulty": 1
+  },
+  {
+    "id": 42,
+    "term": "고객확인절차(KYC)",
+    "englishTerm": "Know Your Customer",
+    "definition": "금융기관이 고객의 신원을 확인하고 검증하는 의무 절차",
+    "description": "자금세탁 방지를 위해 은행에서 계좌를 만들 때 신분증을 요구하고 직업이나 거래 목적을 묻는 것이 바로 이 절차입니다.",
+    "category": "정책",
+    "difficulty": 2
+  },
+  {
+    "id": 43,
+    "term": "고용률",
+    "englishTerm": "Employment Rate",
+    "definition": "생산가능인구(15세 이상) 중에서 취업자가 차지하는 비율",
+    "description": "실업률 통계의 맹점을 보완하는 지표입니다. 구직 단념자가 늘어나도 실업률은 떨어질 수 있지만, 고용률은 실제 일하는 사람 비율을 정직하게 보여줍니다.",
+    "category": "경기",
+    "difficulty": 1
+  },
+  {
+    "id": 44,
+    "term": "고용보조지표",
+    "englishTerm": "Labor Underutilization",
+    "definition": "공식 실업률에는 잡히지 않지만 사실상 실업 상태인 사람들을 포함한 체감 실업률",
+    "description": "아르바이트를 하면서 더 일하고 싶은 사람이나, 취업 준비생 등을 포함하여 국민이 느끼는 실제 고용 사정을 보여줍니다.",
+    "category": "경기",
+    "difficulty": 2
+  },
+  {
+    "id": 45,
+    "term": "고용유발효과",
+    "englishTerm": "Employment Inducement",
+    "definition": "어떤 산업에 10억 원을 투자했을 때 직간접적으로 생겨나는 일자리 수",
+    "description": "건설업이나 서비스업은 고용유발효과가 큽니다. 정부가 일자리를 늘리기 위해 어떤 산업을 밀어줄지 결정할 때 참고합니다.",
+    "category": "경기",
+    "difficulty": 2
+  },
+  {
+    "id": 46,
+    "term": "고정금리",
+    "englishTerm": "Fixed Rate",
+    "definition": "대출 만기 때까지 이자율이 변하지 않고 일정하게 유지되는 금리",
+    "description": "금리가 오를 시기에는 유리하지만, 초기 금리가 변동금리보다 약간 높게 설정되는 편입니다. 미래의 불확실성을 피하고 싶을 때 선택합니다.",
+    "category": "금리",
+    "difficulty": 1
+  },
+  {
+    "id": 47,
+    "term": "고정금리부채권(SB)",
+    "englishTerm": "Straight Bond",
+    "definition": "발행할 때 정해진 이자를 만기까지 똑같이 주는 가장 일반적인 채권",
+    "description": "회사가 망하지 않는 한 약속된 이자를 꼬박꼬박 받을 수 있어 안정적인 투자 수단입니다.",
+    "category": "금융시장",
+    "difficulty": 2
+  },
+  {
+    "id": 48,
+    "term": "고정분류여신",
+    "englishTerm": "Substandard",
+    "definition": "금융기관이 빌려준 돈 중 떼일 위험이 있어서 관리가 필요한 대출",
+    "description": "대출 자산 건전성 5단계(정상-요주의-고정-회수의문-추정손실) 중 3단계입니다. 연체가 3개월 이상 되어 돈을 돌려받기 어려워지기 시작한 상태입니다.",
+    "category": "리스크관리",
+    "difficulty": 3
+  },
+  {
+    "id": 49,
+    "term": "고정이하여신비율",
+    "englishTerm": "NPL Ratio",
+    "definition": "전체 대출 중 연체 기간이 3개월 이상인 부실 대출이 차지하는 비율",
+    "description": "은행의 건전성을 보여주는 대표적인 지표입니다. 이 비율이 높으면 은행이 부실해지고 있다는 뜻이므로 낮을수록 좋습니다.",
+    "category": "리스크관리",
+    "difficulty": 2
+  },
+  {
+    "id": 50,
+    "term": "고정자본소모",
+    "englishTerm": "Fixed Capital Consumption",
+    "definition": "생산 과정에서 기계나 건물이 닳아 없어진 가치만큼을 비용으로 계산한 것",
+    "description": "기업 회계의 '감가상각비'와 비슷한 개념입니다. GDP(총생산)에서 이걸 빼면 NDP(순생산)가 됩니다.",
+    "category": "경기",
+    "difficulty": 3
+  }
+];
+
+        // ==========================================
+        // HELPER COMPONENTS
+        // ==========================================
+
+        const HighlightText = ({ text, highlight }) => {
+            if (!highlight || !highlight.trim()) return React.createElement("span", null, text);
+            const regex = new RegExp(`(${highlight})`, 'gi');
+            const parts = text.split(regex);
+            return React.createElement(
+                "span",
+                null,
+                parts.map((part, i) =>
+                    regex.test(part)
+                        ? React.createElement("span", { key: i, className: "bg-blue-100 text-blue-700 font-bold px-0.5 rounded-sm" }, part)
+                        : React.createElement("span", { key: i }, part)
+                )
+            );
+        };
+
+        const DifficultyBadge = ({ level }) => {
+            if (level === 1) return React.createElement("span", { className: "text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold border border-green-200" }, "Lv.1");
+            if (level === 2) return React.createElement("span", { className: "text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold border border-blue-200" }, "Lv.2");
+            return React.createElement("span", { className: "text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold border border-red-200" }, "Lv.3");
+        };
+
+        const BottomNav = ({ activeTab, setActiveTab }) => {
+            const navItems = [
+                { id: 'dict', icon: Home, label: '사전' },
+                { id: 'flashcard', icon: BookOpen, label: '암기' },
+                { id: 'quiz', icon: Brain, label: '퀴즈' },
+                { id: 'note', icon: Star, label: '노트' }
+            ];
+
+            return React.createElement(
+                "div",
+                { className: "fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 pb-safe z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" },
+                navItems.map(item => React.createElement(
+                    "button",
+                    {
+                        key: item.id,
+                        onClick: () => setActiveTab(item.id),
+                        className: `flex flex-col items-center p-2 transition-colors ${activeTab === item.id ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`
+                    },
+                    React.createElement(item.icon, { size: 24, strokeWidth: activeTab === item.id ? 2.5 : 2 }),
+                    React.createElement("span", { className: "text-[10px] font-bold mt-1" }, item.label)
+                ))
+            );
+        };
+
+        // ==========================================
+        // MAIN TABS
+        // ==========================================
+
+        const DictionaryTab = ({ bookmarks, toggleBookmark }) => {
+            const [searchTerm, setSearchTerm] = useState("");
+            const [activeLevel, setActiveLevel] = useState(1);
+            const [selectedTerm, setSelectedTerm] = useState(null);
+
+            const filteredData = useMemo(() => {
+                if (searchTerm) {
+                    return RAW_DATA.filter(item =>
+                        item.term.includes(searchTerm) ||
+                        (item.englishTerm && item.englishTerm.toLowerCase().includes(searchTerm.toLowerCase()))
+                    );
+                }
+                if (activeLevel === 'all') return RAW_DATA;
+                return RAW_DATA.filter(item => item.difficulty === activeLevel);
+            }, [searchTerm, activeLevel]);
+
+            return React.createElement(
+                "div",
+                { className: "pb-24 px-4 pt-6 min-h-screen bg-gray-50" },
+                React.createElement(
+                    "div",
+                    { className: "mb-6" },
+                    React.createElement("h1", { className: "text-2xl font-bold text-gray-800" }, "금융용어 마스터"),
+                    React.createElement("p", { className: "text-gray-500 text-xs mt-1" }, `총 ${RAW_DATA.length}개의 용어가 탑재되었습니다.`)
+                ),
+                !searchTerm && React.createElement(
+                    "div",
+                    { className: "flex bg-gray-200 p-1 rounded-xl mb-4 overflow-x-auto" },
+                    [1, 2, 3, 'all'].map(lvl => React.createElement(
+                        "button",
+                        {
+                            key: lvl,
+                            onClick: () => setActiveLevel(lvl),
+                            className: `flex-1 py-2 px-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${activeLevel === lvl ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`
+                        },
+                        lvl === 'all' ? '전체' : (lvl === 1 ? '🌱 기초반' : (lvl === 2 ? '🚀 실전반' : '🔥 심화반'))
+                    ))
+                ),
+                React.createElement(
+                    "div",
+                    { className: "relative mb-4 group" },
+                    React.createElement("input", {
+                        type: "text",
+                        placeholder: "용어 검색 (예: 금리, GDP)",
+                        className: "w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all",
+                        value: searchTerm,
+                        onChange: (e) => setSearchTerm(e.target.value)
+                    }),
+                    React.createElement(Search, { className: "absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition-colors", size: 20 })
+                ),
+                React.createElement(
+                    "div",
+                    { className: "flex justify-between items-center px-1 mb-2" },
+                    React.createElement("span", { className: "text-xs font-bold text-gray-400" }, searchTerm ? '검색 결과' : (activeLevel === 'all' ? '전체 용어' : `Lv.${activeLevel} 용어`)),
+                    React.createElement("span", { className: "text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500" }, `${filteredData.length}개`)
+                ),
+                React.createElement(
+                    "div",
+                    { className: "space-y-3" },
+                    filteredData.map(item => React.createElement(
+                        "div",
+                        {
+                            key: item.id,
+                            className: "bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:scale-[0.98] transition-transform cursor-pointer hover:border-blue-200 hover:shadow-md",
+                            onClick: () => setSelectedTerm(item)
+                        },
+                        React.createElement(
+                            "div",
+                            { className: "flex justify-between items-start mb-1" },
+                            React.createElement(
+                                "div",
+                                { className: "flex items-center space-x-2" },
+                                React.createElement("span", { className: "text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded" }, item.category),
+                                React.createElement(DifficultyBadge, { level: item.difficulty })
+                            ),
+                            React.createElement(
+                                "button",
+                                {
+                                    onClick: (e) => { e.stopPropagation(); toggleBookmark(item.id); },
+                                    className: `p-1 rounded-full ${bookmarks.includes(item.id) ? 'text-yellow-400' : 'text-gray-200 hover:bg-gray-50'}`
+                                },
+                                React.createElement(Star, { size: 18, fill: bookmarks.includes(item.id) ? "currentColor" : "none" })
+                            )
+                        ),
+                        React.createElement(
+                            "h3",
+                            { className: "text-lg font-bold text-gray-900 mb-1" },
+                            React.createElement(HighlightText, { text: item.term, highlight: searchTerm })
+                        ),
+                        React.createElement("p", { className: "text-gray-500 text-sm line-clamp-1" }, item.definition)
+                    )),
+                    filteredData.length === 0 && React.createElement(
+                        "div",
+                        { className: "text-center py-20 opacity-50" },
+                        React.createElement(Search, { className: "mx-auto mb-2", size: 32 }),
+                        React.createElement("p", null, "검색 결과가 없습니다.")
+                    )
+                ),
+                selectedTerm && React.createElement(
+                    "div",
+                    {
+                        className: "fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200",
+                        onClick: () => setSelectedTerm(null)
+                    },
+                    React.createElement(
+                        "div",
+                        {
+                            className: "bg-white w-full max-w-md max-h-[80vh] overflow-y-auto rounded-3xl p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 zoom-in-95 duration-300",
+                            onClick: e => e.stopPropagation()
+                        },
+                        React.createElement(
+                            "button",
+                            { onClick: () => setSelectedTerm(null), className: "absolute right-4 top-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200" },
+                            React.createElement(X, { size: 18 })
+                        ),
+                        React.createElement(
+                            "div",
+                            { className: "mb-6 mt-2" },
+                            React.createElement(
+                                "div",
+                                { className: "flex space-x-2 mb-2" },
+                                React.createElement("span", { className: "text-blue-600 text-xs font-bold bg-blue-50 px-2 py-1 rounded-md" }, selectedTerm.category),
+                                React.createElement(DifficultyBadge, { level: selectedTerm.difficulty })
+                            ),
+                            React.createElement("h2", { className: "text-2xl font-bold text-gray-900" }, selectedTerm.term),
+                            selectedTerm.englishTerm && React.createElement("p", { className: "text-gray-400 text-sm font-medium font-mono mt-1" }, selectedTerm.englishTerm)
+                        ),
+                        React.createElement(
+                            "div",
+                            { className: "bg-gray-50 rounded-xl p-5 mb-5 border border-gray-100" },
+                            React.createElement("p", { className: "text-gray-800 font-bold leading-relaxed text-lg" }, selectedTerm.definition)
+                        ),
+                        React.createElement(
+                            "div",
+                            { className: "mb-8" },
+                            React.createElement(
+                                "h4",
+                                { className: "text-xs font-bold text-gray-400 mb-2 uppercase flex items-center" },
+                                React.createElement(BookOpen, { size: 12, className: "mr-1" }),
+                                " 상세 설명"
+                            ),
+                            React.createElement("p", { className: "text-gray-600 text-sm leading-relaxed text-justify" }, selectedTerm.description)
+                        ),
+                        React.createElement(
+                            "button",
+                            {
+                                onClick: () => toggleBookmark(selectedTerm.id),
+                                className: `w-full py-3.5 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg active:scale-95 ${bookmarks.includes(selectedTerm.id) ? 'bg-yellow-50 text-yellow-600 border border-yellow-200' : 'bg-gray-900 text-white hover:bg-gray-800'}`
+                            },
+                            React.createElement(Star, { size: 18, fill: bookmarks.includes(selectedTerm.id) ? "currentColor" : "none" }),
+                            React.createElement("span", null, bookmarks.includes(selectedTerm.id) ? '노트에 저장됨' : '내 노트에 저장')
+                        )
+                    )
+                )
+            );
+        };
+
+        const FlashcardTab = () => {
+            const [level, setLevel] = useState(1);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [isFlipped, setIsFlipped] = useState(false);
+            const [deck, setDeck] = useState([]);
+
+            useEffect(() => {
+                let target = level === 'all' ? RAW_DATA : RAW_DATA.filter(d => d.difficulty === level);
+                if (target.length === 0) target = RAW_DATA;
+                setDeck([...target].sort(() => Math.random() - 0.5));
+                setCurrentIndex(0);
+                setIsFlipped(false);
+            }, [level]);
+
+            const currentCard = deck[currentIndex];
+            const handleNext = () => {
+                setIsFlipped(false);
+                setTimeout(() => setCurrentIndex(prev => (prev + 1) % deck.length), 200);
+            };
+
+            if (!currentCard) return React.createElement("div", { className: "p-10 text-center" }, "데이터 준비 중...");
+
+            return React.createElement(
+                "div",
+                { className: "flex flex-col h-screen pb-24 px-6 pt-6 bg-gray-100" },
+                React.createElement(
+                    "div",
+                    { className: "flex justify-center space-x-2 mb-4" },
+                    [1, 2, 3, 'all'].map(l => React.createElement(
+                        "button",
+                        {
+                            key: l,
+                            onClick: () => setLevel(l),
+                            className: `text-xs font-bold px-3 py-1 rounded-full border transition-all ${level === l ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-400 border-gray-200'}`
+                        },
+                        l === 'all' ? '전체 랜덤' : `Lv.${l}`
+                    ))
+                ),
+                React.createElement(
+                    "div",
+                    { className: "text-center mb-4" },
+                    React.createElement("h2", { className: "text-xl font-bold text-gray-800" }, "암기 카드"),
+                    React.createElement("p", { className: "text-gray-400 text-xs mt-1" }, `${currentIndex + 1} / ${deck.length}`)
+                ),
+                React.createElement(
+                    "div",
+                    {
+                        className: "flex-1 relative perspective-1000 group cursor-pointer mb-6",
+                        onClick: () => setIsFlipped(!isFlipped)
+                    },
+                    React.createElement(
+                        "div",
+                        {
+                            className: `relative w-full h-full duration-500 preserve-3d transition-all transform ${isFlipped ? 'rotate-y-180' : ''}`,
+                            style: { transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }
+                        },
+                        React.createElement(
+                            "div",
+                            { className: "absolute inset-0 backface-hidden bg-white rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 border border-gray-200" },
+                            React.createElement(DifficultyBadge, { level: currentCard.difficulty }),
+                            React.createElement("h3", { className: "text-3xl font-black text-gray-800 text-center mt-6 mb-2 break-keep" }, currentCard.term),
+                            currentCard.englishTerm && React.createElement("p", { className: "text-gray-400 font-mono text-sm" }, currentCard.englishTerm),
+                            React.createElement(
+                                "div",
+                                { className: "absolute bottom-8 text-gray-400 flex items-center text-xs animate-bounce" },
+                                React.createElement(RotateCw, { size: 14, className: "mr-1.5" }),
+                                " 터치해서 뜻 확인"
+                            )
+                        ),
+                        React.createElement(
+                            "div",
+                            {
+                                className: "absolute inset-0 backface-hidden bg-gray-900 text-white rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 rotate-y-180",
+                                style: { transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }
+                            },
+                            React.createElement(
+                                "div",
+                                { className: "mb-6 bg-white/10 p-3 rounded-full" },
+                                React.createElement(Lightbulb, { size: 28, className: "text-yellow-400" })
+                            ),
+                            React.createElement("p", { className: "text-xl font-bold text-center leading-relaxed mb-6 break-keep" }, currentCard.definition),
+                            React.createElement("p", { className: "text-gray-400 text-sm text-center line-clamp-4 leading-relaxed" }, currentCard.description)
+                        )
+                    )
+                ),
+                React.createElement(
+                    "button",
+                    {
+                        onClick: (e) => { e.stopPropagation(); handleNext(); },
+                        className: "bg-blue-600 text-white w-full py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 shadow-lg active:scale-95 transition-all"
+                    },
+                    "다음 카드"
+                )
+            );
+        };
+
+        const QuizTab = () => {
+            const [currentQuestion, setCurrentQuestion] = useState(null);
+            const [options, setOptions] = useState([]);
+            const [selectedOption, setSelectedOption] = useState(null);
+            const [score, setScore] = useState(0);
+            const [combo, setCombo] = useState(0);
+
+            const generateQuestion = () => {
+                const randomIdx = Math.floor(Math.random() * RAW_DATA.length);
+                const answer = RAW_DATA[randomIdx];
+                const distractors = RAW_DATA
+                    .filter(item => item.id !== answer.id)
+                    .sort(() => Math.random() - 0.5)
+                    .slice(0, 3)
+                    .map(item => item.term);
+                const allOptions = [...distractors, answer.term].sort(() => Math.random() - 0.5);
+
+                setCurrentQuestion(answer);
+                setOptions(allOptions);
+                setSelectedOption(null);
+            };
+
+            useEffect(() => { generateQuestion(); }, []);
+
+            const handleAnswer = (option) => {
+                if (selectedOption) return;
+                setSelectedOption(option);
+                if (option === currentQuestion?.term) {
+                    setScore(s => s + 10 + (combo * 2));
+                    setCombo(c => c + 1);
+                } else {
+                    setCombo(0);
+                }
+            };
+
+            if (!currentQuestion) return null;
+
+            return React.createElement(
+                "div",
+                { className: "flex flex-col h-screen pb-24 px-4 pt-8 bg-indigo-50" },
+                React.createElement(
+                    "div",
+                    { className: "flex justify-between items-center mb-6" },
+                    React.createElement(
+                        "div",
+                        null,
+                        React.createElement("h2", { className: "text-xl font-bold text-gray-800 flex items-center" }, "스피드 퀴즈"),
+                        React.createElement(
+                            "p",
+                            { className: "text-xs text-indigo-400 font-bold flex items-center mt-1" },
+                            React.createElement(BarChart3, { size: 12, className: "mr-1" }),
+                            `현재 ${combo}연속 정답 중!`
+                        )
+                    ),
+                    React.createElement(
+                        "div",
+                        { className: "bg-white px-4 py-2 rounded-2xl shadow-sm text-indigo-600 font-black border border-indigo-100 flex items-center" },
+                        React.createElement(Trophy, { size: 16, className: "mr-2 text-yellow-500" }),
+                        score
+                    )
+                ),
+                React.createElement(
+                    "div",
+                    { className: "bg-white rounded-3xl p-8 shadow-sm border border-indigo-100 mb-6 flex-1 flex flex-col justify-center text-center relative overflow-hidden" },
+                    React.createElement("span", { className: "text-indigo-400 font-bold text-xs tracking-widest uppercase mb-4 block" }, "Definition"),
+                    React.createElement("p", { className: "text-xl font-bold text-gray-800 leading-relaxed break-keep" }, `"${currentQuestion.definition}"`),
+                    React.createElement("div", { className: "mt-4" }, React.createElement(DifficultyBadge, { level: currentQuestion.difficulty }))
+                ),
+                React.createElement(
+                    "div",
+                    { className: "grid grid-cols-1 gap-3" },
+                    options.map((option, idx) => {
+                        let style = "bg-white text-gray-700 hover:bg-gray-50 border-gray-200";
+                        if (selectedOption) {
+                            if (option === currentQuestion.term) style = "bg-green-500 text-white border-green-500 shadow-md ring-2 ring-green-200";
+                            else if (option === selectedOption) style = "bg-red-500 text-white border-red-500 shadow-md";
+                            else style = "bg-gray-50 text-gray-300 border-transparent";
+                        }
+                        return React.createElement(
+                            "button",
+                            {
+                                key: idx,
+                                onClick: () => handleAnswer(option),
+                                disabled: !!selectedOption,
+                                className: `py-4 rounded-xl font-bold text-lg border-2 transition-all ${style}`
+                            },
+                            option
+                        );
+                    })
+                ),
+                selectedOption && React.createElement(
+                    "div",
+                    { className: "mt-4 flex justify-end animate-in slide-in-from-bottom-2" },
+                    React.createElement(
+                        "button",
+                        {
+                            onClick: generateQuestion,
+                            className: "bg-gray-900 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform flex items-center"
+                        },
+                        "다음 문제 ",
+                        React.createElement(ArrowUp, { size: 16, className: "ml-2 rotate-90" })
+                    )
+                )
+            );
+        };
+
+        const MyNoteTab = ({ bookmarks, toggleBookmark }) => {
+            const savedTerms = RAW_DATA.filter(item => bookmarks.includes(item.id));
+            return React.createElement(
+                "div",
+                { className: "pb-24 px-4 pt-6 min-h-screen bg-gray-50" },
+                React.createElement(
+                    "h1",
+                    { className: "text-2xl font-bold mb-6 text-gray-800 px-2" },
+                    "내 노트 ",
+                    React.createElement("span", { className: "text-blue-500 text-lg ml-1" }, savedTerms.length)
+                ),
+                savedTerms.length === 0 ? React.createElement(
+                    "div",
+                    { className: "flex flex-col items-center justify-center py-20 mt-10" },
+                    React.createElement("div", { className: "bg-white p-6 rounded-full mb-4 shadow-sm border border-gray-100" }, React.createElement(Star, { className: "text-gray-300", size: 40 })),
+                    React.createElement("p", { className: "text-gray-500 font-bold text-lg" }, "아직 빈 노트입니다"),
+                    React.createElement("p", { className: "text-gray-400 text-sm mt-1" }, "학습하다가 중요한 용어를 발견하면 별표하세요!")
+                ) : React.createElement(
+                    "div",
+                    { className: "grid gap-3" },
+                    savedTerms.map(item => React.createElement(
+                        "div",
+                        {
+                            key: item.id,
+                            className: "bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center group hover:border-blue-200 transition-colors"
+                        },
+                        React.createElement(
+                            "div",
+                            null,
+                            React.createElement("span", { className: "text-[10px] text-blue-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded mb-1 inline-block" }, item.category),
+                            React.createElement("h3", { className: "text-lg font-bold text-gray-900" }, item.term),
+                            React.createElement("p", { className: "text-gray-400 text-sm mt-0.5 line-clamp-1" }, item.definition)
+                        ),
+                        React.createElement(
+                            "button",
+                            { onClick: () => toggleBookmark(item.id), className: "p-2 text-yellow-400 hover:bg-yellow-50 rounded-full transition-colors" },
+                            React.createElement(Star, { fill: "currentColor", size: 24 })
+                        )
+                    ))
+                )
+            );
+        };
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState("dict");
+            const [bookmarks, setBookmarks] = useState([]);
+
+            useEffect(() => {
+                const saved = localStorage.getItem('finTermBookmarks');
+                if (saved) try { setBookmarks(JSON.parse(saved)); } catch (e) { console.error(e); }
+            }, []);
+
+            const toggleBookmark = (id) => {
+                const newBookmarks = bookmarks.includes(id) ? bookmarks.filter(bId => bId !== id) : [...bookmarks, id];
+                setBookmarks(newBookmarks);
+                localStorage.setItem('finTermBookmarks', JSON.stringify(newBookmarks));
+            };
+
+            return React.createElement(
+                "div",
+                { className: "min-h-screen bg-gray-100 flex justify-center text-gray-900 font-sans selection:bg-blue-100" },
+                React.createElement(
+                    "main",
+                    { className: "w-full max-w-md bg-white min-h-screen shadow-2xl relative overflow-hidden" },
+                    activeTab === 'dict' && React.createElement(DictionaryTab, { bookmarks, toggleBookmark }),
+                    activeTab === 'flashcard' && React.createElement(FlashcardTab, null),
+                    activeTab === 'quiz' && React.createElement(QuizTab, null),
+                    activeTab === 'note' && React.createElement(MyNoteTab, { bookmarks, toggleBookmark }),
+                    React.createElement(BottomNav, { activeTab, setActiveTab })
+                )
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
