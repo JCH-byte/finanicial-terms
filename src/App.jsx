@@ -6,13 +6,43 @@ import FlashcardTab from "./tabs/FlashcardTab.jsx";
 import MyNoteTab from "./tabs/MyNoteTab.jsx";
 import QuizTab from "./tabs/QuizTab.jsx";
 
+const BOOKMARK_STORAGE_KEY = "finTermBookmarks";
+
+const loadBookmarks = () => {
+    const saved = localStorage.getItem(BOOKMARK_STORAGE_KEY);
+
+    if (!saved) {
+        return [];
+    }
+
+    try {
+        return JSON.parse(saved);
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+};
+
+const buildNextBookmarks = (prevBookmarks, id) => (
+    prevBookmarks.includes(id)
+        ? prevBookmarks.filter((bookmarkId) => bookmarkId !== id)
+        : [...prevBookmarks, id]
+);
+
 const App = () => {
             const [activeTab, setActiveTab] = useState("dict");
             const [bookmarks, setBookmarks] = useState([]);
             const [showTopBtn, setShowTopBtn] = useState(false);
 
-            useEffect(() => { const saved = localStorage.getItem('finTermBookmarks'); if (saved) try { setBookmarks(JSON.parse(saved)); } catch (e) { console.error(e); } }, []);
-            const toggleBookmark = (id) => { const newBookmarks = bookmarks.includes(id) ? bookmarks.filter(bId => bId !== id) : [...bookmarks, id]; setBookmarks(newBookmarks); localStorage.setItem('finTermBookmarks', JSON.stringify(newBookmarks)); };
+            useEffect(() => {
+                setBookmarks(loadBookmarks());
+            }, []);
+
+            const toggleBookmark = (id) => {
+                const nextBookmarks = buildNextBookmarks(bookmarks, id);
+                setBookmarks(nextBookmarks);
+                localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify(nextBookmarks));
+            };
 
             const handleScroll = (e) => {
                 const scrollTop = e.currentTarget.scrollTop;
