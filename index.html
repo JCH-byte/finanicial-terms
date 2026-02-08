@@ -24,6 +24,8 @@
     <div id="root"></div>
     <script type="module">
         import React, { useState, useEffect, useMemo } from 'react';
+        import { useBookmarks } from './src/hooks/useBookmarks.js';
+        import { filterTermsBySearch, filterTermsByDifficulty, pickQuizQuestion, shuffleTerms } from './src/domain/terms.js';
         import ReactDOM from 'react-dom/client';
         import { Search, BookOpen, Star, Home, RotateCw, Lightbulb, X, Brain, Trophy, ArrowUp, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -55,23 +57,21 @@
         };
 
         // --- Tabs ---
-        const DictionaryTab = ({ bookmarks, toggleBookmark }) => {
+        const DictionaryTab = ({ terms, totalCount, isBookmarked, onToggleBookmark }) => {
             const [searchTerm, setSearchTerm] = useState("");
             const [activeLevel, setActiveLevel] = useState(1);
             const [selectedTerm, setSelectedTerm] = useState(null);
 
-            const filteredData = useMemo(() => {
-                if (searchTerm) {
-                    return RAW_DATA.filter(item => item.term.includes(searchTerm) || (item.englishTerm && item.englishTerm.toLowerCase().includes(searchTerm.toLowerCase())));
-                }
-                if (activeLevel === 'all') return RAW_DATA;
-                return RAW_DATA.filter(item => item.difficulty === activeLevel);
-            }, [searchTerm, activeLevel]);
+            const filteredBySearch = useMemo(() => filterTermsBySearch(terms, searchTerm), [terms, searchTerm]);
+            const filteredTerms = useMemo(() => {
+                if (searchTerm) return filteredBySearch;
+                return filterTermsByDifficulty(terms, activeLevel);
+            }, [terms, searchTerm, filteredBySearch, activeLevel]);
 
             return React.createElement("div", { className: "pb-24 px-4 pt-6 min-h-screen bg-gray-50" },
                 React.createElement("div", { className: "mb-6" },
                     React.createElement("h1", { className: "text-2xl font-bold text-gray-800" }, "경제금융용어 700"),
-                    React.createElement("p", { className: "text-gray-500 text-xs mt-1" }, `총 ${RAW_DATA.length}개의 용어가 탑재되었습니다.`)
+                    React.createElement("p", { className: "text-gray-500 text-xs mt-1" }, `총 ${totalCount}개의 용어가 탑재되었습니다.`)
                 ),
                 !searchTerm && React.createElement("div", { className: "flex bg-gray-200 p-1 rounded-xl mb-4 overflow-x-auto no-scrollbar" },
                     [1, 2, 3, 'all'].map(lvl => React.createElement("button", { key: lvl, onClick: () => setActiveLevel(lvl), className: `flex-1 py-2 px-3 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${activeLevel === lvl ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}` }, lvl === 'all' ? '전체' : `Lv.${lvl}`))
@@ -81,15 +81,15 @@
                     React.createElement(Search, { className: "absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500", size: 20 })
                 ),
                 React.createElement("div", { className: "space-y-3" },
-                    filteredData.map(item => React.createElement("div", { key: item.id, className: "bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:scale-[0.98] transition-transform cursor-pointer", onClick: () => setSelectedTerm(item) },
+                    filteredTerms.map(item => React.createElement("div", { key: item.id, className: "bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:scale-[0.98] transition-transform cursor-pointer", onClick: () => setSelectedTerm(item) },
                         React.createElement("div", { className: "flex justify-between items-start mb-1" },
                             React.createElement("div", { className: "flex items-center space-x-2" }, React.createElement("span", { className: "text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded" }, item.category), React.createElement(DifficultyBadge, { level: item.difficulty })),
-                            React.createElement("button", { onClick: (e) => { e.stopPropagation(); toggleBookmark(item.id); }, className: `p-1 rounded-full ${bookmarks.includes(item.id) ? 'text-yellow-400' : 'text-gray-200'}` }, React.createElement(Star, { size: 18, fill: bookmarks.includes(item.id) ? "currentColor" : "none" }))
+                            React.createElement("button", { onClick: (e) => { e.stopPropagation(); onToggleBookmark(item.id); }, className: `p-1 rounded-full ${isBookmarked(item.id) ? 'text-yellow-400' : 'text-gray-200'}` }, React.createElement(Star, { size: 18, fill: isBookmarked(item.id) ? "currentColor" : "none" }))
                         ),
                         React.createElement("h3", { className: "text-lg font-bold text-gray-900 mb-1" }, React.createElement(HighlightText, { text: item.term, highlight: searchTerm })),
                         React.createElement("p", { className: "text-gray-500 text-sm line-clamp-1" }, item.definition)
                     )),
-                    filteredData.length === 0 && React.createElement("div", { className: "text-center py-20 opacity-50" }, React.createElement(Search, { className: "mx-auto mb-2", size: 32 }), React.createElement("p", null, "검색 결과가 없습니다."))
+                    filteredTerms.length === 0 && React.createElement("div", { className: "text-center py-20 opacity-50" }, React.createElement(Search, { className: "mx-auto mb-2", size: 32 }), React.createElement("p", null, "검색 결과가 없습니다."))
                 ),
                 selectedTerm && React.createElement("div", { className: "fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200", onClick: () => setSelectedTerm(null) },
                     React.createElement("div", { className: "bg-white w-full max-w-md max-h-[80vh] overflow-y-auto rounded-3xl p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 zoom-in-95 duration-300", onClick: e => e.stopPropagation() },
@@ -101,34 +101,33 @@
                         ),
                         React.createElement("div", { className: "bg-gray-50 rounded-xl p-5 mb-5 border border-gray-100" }, React.createElement("p", { className: "text-gray-800 font-bold leading-relaxed text-lg" }, selectedTerm.definition)),
                         React.createElement("div", { className: "mb-8" }, React.createElement("h4", { className: "text-xs font-bold text-gray-400 mb-2 uppercase flex items-center" }, React.createElement(BookOpen, { size: 12, className: "mr-1" }), " 상세 설명"), React.createElement("p", { className: "text-gray-600 text-sm leading-relaxed text-justify" }, selectedTerm.description)),
-                        React.createElement("button", { onClick: () => toggleBookmark(selectedTerm.id), className: `w-full py-3.5 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg active:scale-95 ${bookmarks.includes(selectedTerm.id) ? 'bg-yellow-50 text-yellow-600 border border-yellow-200' : 'bg-gray-900 text-white'}` }, React.createElement(Star, { size: 18, fill: bookmarks.includes(selectedTerm.id) ? "currentColor" : "none" }), React.createElement("span", null, bookmarks.includes(selectedTerm.id) ? '노트에 저장됨' : '내 노트에 저장'))
+                        React.createElement("button", { onClick: () => onToggleBookmark(selectedTerm.id), className: `w-full py-3.5 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg active:scale-95 ${isBookmarked(selectedTerm.id) ? 'bg-yellow-50 text-yellow-600 border border-yellow-200' : 'bg-gray-900 text-white'}` }, React.createElement(Star, { size: 18, fill: isBookmarked(selectedTerm.id) ? "currentColor" : "none" }), React.createElement("span", null, isBookmarked(selectedTerm.id) ? '노트에 저장됨' : '내 노트에 저장'))
                     )
                 )
             );
         };
 
-        const FlashcardTab = () => {
+        const FlashcardTab = ({ terms }) => {
             const [level, setLevel] = useState(1);
             const [currentIndex, setCurrentIndex] = useState(0);
             const [isFlipped, setIsFlipped] = useState(false);
             const [deck, setDeck] = useState([]);
 
             useEffect(() => {
-                let target = level === 'all' ? RAW_DATA : RAW_DATA.filter(d => d.difficulty === level);
-                if (target.length === 0) target = RAW_DATA;
-                const sortedDeck = [...target].sort((a, b) => a.term.localeCompare(b.term, 'ko'));
-                setDeck(sortedDeck);
+                let target = filterTermsByDifficulty(terms, level);
+                if (target.length === 0) target = terms;
+                setDeck(shuffleTerms(target));
 
                 const savedProgress = localStorage.getItem(`flashcard_idx_${level}`);
                 if (savedProgress) {
                     const savedIdx = parseInt(savedProgress, 10);
-                    if (savedIdx < sortedDeck.length) setCurrentIndex(savedIdx);
+                    if (savedIdx < target.length) setCurrentIndex(savedIdx);
                     else setCurrentIndex(0);
                 } else {
                     setCurrentIndex(0);
                 }
                 setIsFlipped(false);
-            }, [level]);
+            }, [terms, level]);
 
             useEffect(() => { localStorage.setItem(`flashcard_idx_${level}`, currentIndex); }, [currentIndex, level]);
 
@@ -153,20 +152,29 @@
             );
         };
 
-        const QuizTab = () => {
+        const QuizTab = ({ terms }) => {
             const [currentQuestion, setCurrentQuestion] = useState(null);
             const [options, setOptions] = useState([]);
             const [selectedOption, setSelectedOption] = useState(null);
             const [score, setScore] = useState(0);
             const [combo, setCombo] = useState(0);
+            const [usedIds, setUsedIds] = useState([]);
+
             const generateQuestion = () => {
-                const randomIdx = Math.floor(Math.random() * RAW_DATA.length);
-                const answer = RAW_DATA[randomIdx];
-                const distractors = RAW_DATA.filter(item => item.id !== answer.id).sort(() => Math.random() - 0.5).slice(0, 3).map(item => item.term);
-                const allOptions = [...distractors, answer.term].sort(() => Math.random() - 0.5);
-                setCurrentQuestion(answer); setOptions(allOptions); setSelectedOption(null);
+                const answer = pickQuizQuestion(terms, usedIds);
+                if (!answer) return;
+
+                const distractors = shuffleTerms(terms.filter(item => item.id !== answer.id)).slice(0, 3).map(item => item.term);
+                const allOptions = shuffleTerms([...distractors, answer.term]);
+
+                setCurrentQuestion(answer);
+                setOptions(allOptions);
+                setSelectedOption(null);
+                setUsedIds(prev => [...prev, answer.id]);
             };
+
             useEffect(() => { generateQuestion(); }, []);
+
             const handleAnswer = (option) => { if (selectedOption) return; setSelectedOption(option); if (option === currentQuestion?.term) { setScore(s => s + 10 + (combo * 2)); setCombo(c => c + 1); } else { setCombo(0); } };
             if (!currentQuestion) return null;
             return React.createElement("div", { className: "flex flex-col h-screen pb-24 px-4 pt-8 bg-indigo-50" },
@@ -177,35 +185,12 @@
             );
         };
 
-        const MyNoteTab = ({ bookmarks, toggleBookmark }) => {
+        const MyNoteTab = ({ terms, isBookmarked, onToggleBookmark }) => {
             const [selectedTerm, setSelectedTerm] = useState(null);
-            const savedTerms = RAW_DATA.filter(item => bookmarks.includes(item.id));
-            
-            return React.createElement("div", { className: "pb-24 px-4 pt-6 min-h-screen bg-gray-50" },
-                React.createElement("h1", { className: "text-2xl font-bold mb-6 text-gray-800 px-2" }, "내 노트 ", React.createElement("span", { className: "text-blue-500 text-lg ml-1" }, savedTerms.length)),
-                
-                savedTerms.length === 0 ? React.createElement("div", { className: "flex flex-col items-center justify-center py-20 mt-10" }, 
-                    React.createElement("div", { className: "bg-white p-6 rounded-full mb-4 shadow-sm border border-gray-100" }, React.createElement(Star, { className: "text-gray-300", size: 40 })), 
-                    React.createElement("p", { className: "text-gray-500 font-bold text-lg" }, "아직 빈 노트입니다"), 
-                    React.createElement("p", { className: "text-gray-400 text-sm mt-1" }, "학습하다가 중요한 용어를 발견하면 별표하세요!")
-                ) : React.createElement("div", { className: "grid gap-3" }, 
-                    savedTerms.map(item => React.createElement("div", { 
-                        key: item.id, 
-                        onClick: () => setSelectedTerm(item),
-                        className: "bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center group hover:border-blue-200 transition-colors cursor-pointer active:scale-[0.98]" 
-                    }, 
-                        React.createElement("div", null, 
-                            React.createElement("span", { className: "text-[10px] text-blue-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded mb-1 inline-block" }, item.category), 
-                            React.createElement("h3", { className: "text-lg font-bold text-gray-900" }, item.term), 
-                            React.createElement("p", { className: "text-gray-400 text-sm mt-0.5 line-clamp-1" }, item.definition)
-                        ), 
-                        React.createElement("button", { 
-                            onClick: (e) => { e.stopPropagation(); toggleBookmark(item.id); }, 
-                            className: "p-2 text-yellow-400 hover:bg-yellow-50 rounded-full transition-colors" 
-                        }, React.createElement(Star, { fill: "currentColor", size: 24 }))
-                    ))
-                ),
 
+            return React.createElement("div", { className: "pb-24 px-4 pt-6 min-h-screen bg-gray-50" },
+                React.createElement("h1", { className: "text-2xl font-bold mb-6 text-gray-800 px-2" }, "내 노트 ", React.createElement("span", { className: "text-blue-500 text-lg ml-1" }, terms.length)),
+                terms.length === 0 ? React.createElement("div", { className: "flex flex-col items-center justify-center py-20 mt-10" }, React.createElement("div", { className: "bg-white p-6 rounded-full mb-4 shadow-sm border border-gray-100" }, React.createElement(Star, { className: "text-gray-300", size: 40 })), React.createElement("p", { className: "text-gray-500 font-bold text-lg" }, "아직 빈 노트입니다"), React.createElement("p", { className: "text-gray-400 text-sm mt-1" }, "학습하다가 중요한 용어를 발견하면 별표하세요!")) : React.createElement("div", { className: "grid gap-3" }, terms.map(item => React.createElement("div", { key: item.id, onClick: () => setSelectedTerm(item), className: "bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center group hover:border-blue-200 transition-colors cursor-pointer active:scale-[0.98]" }, React.createElement("div", null, React.createElement("span", { className: "text-[10px] text-blue-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded mb-1 inline-block" }, item.category), React.createElement("h3", { className: "text-lg font-bold text-gray-900" }, item.term), React.createElement("p", { className: "text-gray-400 text-sm mt-0.5 line-clamp-1" }, item.definition)), React.createElement("button", { onClick: (e) => { e.stopPropagation(); onToggleBookmark(item.id); }, className: "p-2 text-yellow-400 hover:bg-yellow-50 rounded-full transition-colors" }, React.createElement(Star, { fill: "currentColor", size: 24 }))))),
                 selectedTerm && React.createElement("div", { className: "fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200", onClick: () => setSelectedTerm(null) },
                     React.createElement("div", { className: "bg-white w-full max-w-md max-h-[80vh] overflow-y-auto rounded-3xl p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 zoom-in-95 duration-300", onClick: e => e.stopPropagation() },
                         React.createElement("button", { onClick: () => setSelectedTerm(null), className: "absolute right-4 top-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200" }, React.createElement(X, { size: 18 })),
@@ -216,7 +201,7 @@
                         ),
                         React.createElement("div", { className: "bg-gray-50 rounded-xl p-5 mb-5 border border-gray-100" }, React.createElement("p", { className: "text-gray-800 font-bold leading-relaxed text-lg" }, selectedTerm.definition)),
                         React.createElement("div", { className: "mb-8" }, React.createElement("h4", { className: "text-xs font-bold text-gray-400 mb-2 uppercase flex items-center" }, React.createElement(BookOpen, { size: 12, className: "mr-1" }), " 상세 설명"), React.createElement("p", { className: "text-gray-600 text-sm leading-relaxed text-justify" }, selectedTerm.description)),
-                        React.createElement("button", { onClick: () => toggleBookmark(selectedTerm.id), className: `w-full py-3.5 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg active:scale-95 ${bookmarks.includes(selectedTerm.id) ? 'bg-yellow-50 text-yellow-600 border border-yellow-200' : 'bg-gray-900 text-white'}` }, React.createElement(Star, { size: 18, fill: bookmarks.includes(selectedTerm.id) ? "currentColor" : "none" }), React.createElement("span", null, bookmarks.includes(selectedTerm.id) ? '노트에 저장됨' : '내 노트에 저장'))
+                        React.createElement("button", { onClick: () => onToggleBookmark(selectedTerm.id), className: `w-full py-3.5 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg active:scale-95 ${isBookmarked(selectedTerm.id) ? 'bg-yellow-50 text-yellow-600 border border-yellow-200' : 'bg-gray-900 text-white'}` }, React.createElement(Star, { size: 18, fill: isBookmarked(selectedTerm.id) ? "currentColor" : "none" }), React.createElement("span", null, isBookmarked(selectedTerm.id) ? '노트에 저장됨' : '내 노트에 저장'))
                     )
                 )
             );
@@ -224,11 +209,10 @@
 
         const App = () => {
             const [activeTab, setActiveTab] = useState("dict");
-            const [bookmarks, setBookmarks] = useState([]);
             const [showTopBtn, setShowTopBtn] = useState(false);
+            const { toggleBookmark, isBookmarked } = useBookmarks();
 
-            useEffect(() => { const saved = localStorage.getItem('finTermBookmarks'); if (saved) try { setBookmarks(JSON.parse(saved)); } catch (e) { console.error(e); } }, []);
-            const toggleBookmark = (id) => { const newBookmarks = bookmarks.includes(id) ? bookmarks.filter(bId => bId !== id) : [...bookmarks, id]; setBookmarks(newBookmarks); localStorage.setItem('finTermBookmarks', JSON.stringify(newBookmarks)); };
+            const savedTerms = useMemo(() => RAW_DATA.filter((item) => isBookmarked(item.id)), [isBookmarked]);
 
             const handleScroll = (e) => {
                 const scrollTop = e.currentTarget.scrollTop;
@@ -242,18 +226,16 @@
 
             return React.createElement("div", { className: "min-h-screen bg-gray-100 flex justify-center text-gray-900 font-sans selection:bg-blue-100" },
                 React.createElement("main", { className: "w-full max-w-md bg-white h-screen shadow-2xl relative flex flex-col" },
-                    React.createElement("div", { id: "content-area", className: "flex-1 overflow-y-auto", onScroll: handleScroll }, 
-                        activeTab === 'dict' && React.createElement(DictionaryTab, { bookmarks, toggleBookmark }),
-                        activeTab === 'flashcard' && React.createElement(FlashcardTab, null),
-                        activeTab === 'quiz' && React.createElement(QuizTab, null),
-                        activeTab === 'note' && React.createElement(MyNoteTab, { bookmarks, toggleBookmark })
+                    React.createElement("div", { id: "content-area", className: "flex-1 overflow-y-auto", onScroll: handleScroll },
+                        activeTab === 'dict' && React.createElement(DictionaryTab, { terms: RAW_DATA, totalCount: RAW_DATA.length, isBookmarked, onToggleBookmark: toggleBookmark }),
+                        activeTab === 'flashcard' && React.createElement(FlashcardTab, { terms: RAW_DATA }),
+                        activeTab === 'quiz' && React.createElement(QuizTab, { terms: RAW_DATA }),
+                        activeTab === 'note' && React.createElement(MyNoteTab, { terms: savedTerms, isBookmarked, onToggleBookmark: toggleBookmark })
                     ),
-                    
-                    activeTab === 'dict' && showTopBtn && React.createElement("button", { 
-                        onClick: scrollToTop, 
-                        className: "absolute bottom-20 right-4 bg-white text-blue-600 border border-blue-100 p-3 rounded-full shadow-xl z-50 hover:bg-blue-50 transition-all active:scale-90 animate-in fade-in zoom-in duration-300" 
+                    activeTab === 'dict' && showTopBtn && React.createElement("button", {
+                        onClick: scrollToTop,
+                        className: "absolute bottom-20 right-4 bg-white text-blue-600 border border-blue-100 p-3 rounded-full shadow-xl z-50 hover:bg-blue-50 transition-all active:scale-90 animate-in fade-in zoom-in duration-300"
                     }, React.createElement(ArrowUp, { size: 24, strokeWidth: 2.5 })),
-
                     React.createElement(BottomNav, { activeTab, setActiveTab })
                 )
             );
