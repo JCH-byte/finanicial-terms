@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/term_entry.schema.json",
+  "title": "Financial Term Entry",
+  "type": "object",
+  "required": [
+    "term",
+    "term_normalized",
+    "source",
+    "page",
+    "description_raw"
+  ],
+  "properties": {
+    "term": {
+      "type": "string",
+      "description": "원본 용어 문자열"
+    },
+    "term_normalized": {
+      "type": "string",
+      "description": "정규화 규칙이 적용된 비교용 용어 문자열"
+    },
+    "source": {
+      "type": "string",
+      "description": "원본 추출 출처 식별자(예: financial_terms_700)"
+    },
+    "page": {
+      "oneOf": [
+        { "type": "integer" },
+        { "type": "string" }
+      ],
+      "description": "원본 문서의 페이지 정보"
+    },
+    "description_raw": {
+      "type": "string",
+      "description": "원문 설명 텍스트"
+    },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "동의어/대체 표기"
+    },
+    "category": {
+      "type": "string",
+      "description": "분류 태그"
+    },
+    "note": {
+      "type": "string",
+      "description": "추가 메모"
+    }
+  },
+  "additionalProperties": false
+}
