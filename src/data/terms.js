@@ -1,4 +1,4 @@
-const TERMS_DATA_PATH = '/data/financial_terms_700.json';
+const TERMS_DATA_PATH = new URL('../../data/financial_terms_700.json', import.meta.url).href;
 
 export async function loadTerms() {
     const response = await fetch(TERMS_DATA_PATH);
