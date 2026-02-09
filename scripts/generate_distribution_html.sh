@@ -12,7 +12,7 @@ cat > "${TARGET_FILE}" <<'HTML'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>경제금융용어 700</title>
+    <title>경제금융용어 800</title>
     <meta http-equiv="refresh" content="0; url=./index.html">
     <link rel="canonical" href="./index.html">
     <script>
