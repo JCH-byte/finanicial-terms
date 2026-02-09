@@ -34,7 +34,7 @@ export function DictionaryTab({ terms, bookmarks, toggleBookmark }) {
         React.createElement(
             'div',
             { className: 'mb-6' },
-            React.createElement('h1', { className: 'text-2xl font-bold text-gray-800' }, '경제금융용어 700'),
+            React.createElement('h1', { className: 'text-2xl font-bold text-gray-800' }, '경제금융용어 800'),
             React.createElement('p', { className: 'text-gray-500 text-xs mt-1' }, `총 ${terms.length}개의 용어가 탑재되었습니다.`),
         ),
         !searchTerm &&
