@@ -6,9 +6,11 @@ import { FlashcardTab } from './tabs/FlashcardTab.js';
 import { QuizTab } from './tabs/QuizTab.js';
 import { MyNoteTab } from './tabs/MyNoteTab.js';
 import { loadTerms } from './data/terms.js';
+import { TAB_IDS } from './constants.js';
+import { getBookmarks, setBookmarks as persistBookmarks } from './services/storage.js';
 
 export function App() {
-    const [activeTab, setActiveTab] = useState('dict');
+    const [activeTab, setActiveTab] = useState(TAB_IDS.DICTIONARY);
     const [bookmarks, setBookmarks] = useState([]);
     const [showTopBtn, setShowTopBtn] = useState(false);
     const [terms, setTerms] = useState([]);
@@ -16,14 +18,7 @@ export function App() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const saved = localStorage.getItem('finTermBookmarks');
-        if (saved) {
-            try {
-                setBookmarks(JSON.parse(saved));
-            } catch (e) {
-                console.error(e);
-            }
-        }
+        setBookmarks(getBookmarks());
     }, []);
 
     useEffect(() => {
@@ -52,7 +47,7 @@ export function App() {
     const toggleBookmark = (id) => {
         const newBookmarks = bookmarks.includes(id) ? bookmarks.filter((bId) => bId !== id) : [...bookmarks, id];
         setBookmarks(newBookmarks);
-        localStorage.setItem('finTermBookmarks', JSON.stringify(newBookmarks));
+        persistBookmarks(newBookmarks);
     };
 
     const handleScroll = (e) => {
@@ -76,13 +71,13 @@ export function App() {
                 { id: 'content-area', className: 'flex-1 overflow-y-auto', onScroll: handleScroll },
                 loading && React.createElement('div', { className: 'p-10 text-center text-gray-500' }, '용어 데이터를 불러오는 중입니다...'),
                 error && !loading && React.createElement('div', { className: 'p-10 text-center text-red-500 font-semibold' }, error),
-                !loading && !error && activeTab === 'dict' && React.createElement(DictionaryTab, { terms, bookmarks, toggleBookmark }),
-                !loading && !error && activeTab === 'flashcard' && React.createElement(FlashcardTab, { terms }),
-                !loading && !error && activeTab === 'quiz' && React.createElement(QuizTab, { terms }),
-                !loading && !error && activeTab === 'note' && React.createElement(MyNoteTab, { terms, bookmarks, toggleBookmark }),
+                !loading && !error && activeTab === TAB_IDS.DICTIONARY && React.createElement(DictionaryTab, { terms, bookmarks, toggleBookmark }),
+                !loading && !error && activeTab === TAB_IDS.FLASHCARD && React.createElement(FlashcardTab, { terms }),
+                !loading && !error && activeTab === TAB_IDS.QUIZ && React.createElement(QuizTab, { terms }),
+                !loading && !error && activeTab === TAB_IDS.NOTE && React.createElement(MyNoteTab, { terms, bookmarks, toggleBookmark }),
             ),
 
-            activeTab === 'dict' && showTopBtn && React.createElement(
+            activeTab === TAB_IDS.DICTIONARY && showTopBtn && React.createElement(
                 'button',
                 {
                     onClick: scrollToTop,

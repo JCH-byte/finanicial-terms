@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Lightbulb, RotateCw } from 'lucide-react';
 import { DifficultyBadge } from '../components/DifficultyBadge.js';
 import { filterTermsByDifficulty } from '../features/terms/selectors.js';
+import { getFlashcardIndex, setFlashcardIndex } from '../services/storage.js';
 
 export function FlashcardTab({ terms }) {
     const [level, setLevel] = useState(1);
@@ -15,19 +16,14 @@ export function FlashcardTab({ terms }) {
         const sortedDeck = [...target].sort((a, b) => a.term.localeCompare(b.term, 'ko'));
         setDeck(sortedDeck);
 
-        const savedProgress = localStorage.getItem(`flashcard_idx_${level}`);
-        if (savedProgress) {
-            const savedIdx = parseInt(savedProgress, 10);
-            if (savedIdx < sortedDeck.length) setCurrentIndex(savedIdx);
-            else setCurrentIndex(0);
-        } else {
-            setCurrentIndex(0);
-        }
+        const savedIdx = getFlashcardIndex(level);
+        if (savedIdx < sortedDeck.length) setCurrentIndex(savedIdx);
+        else setCurrentIndex(0);
         setIsFlipped(false);
     }, [level, terms]);
 
     useEffect(() => {
-        localStorage.setItem(`flashcard_idx_${level}`, currentIndex);
+        setFlashcardIndex(level, currentIndex);
     }, [currentIndex, level]);
 
     const currentCard = deck[currentIndex];
